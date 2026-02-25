@@ -54,7 +54,7 @@ public class MyConfiguration {
         ActiveMQComponent jms = new ActiveMQComponent();
         jms.setConnectionFactory(cf);
         jms.setTransacted(true);
-        jms.setCacheLevelName("CACHE_NONE"); // important avec JTA
+        jms.setCacheLevelName("CACHE_CONSUMER");
         return jms;
     }
 

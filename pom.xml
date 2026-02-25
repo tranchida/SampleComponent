@@ -112,6 +112,7 @@
       <version>${activemq.version}</version>
     </dependency>
 
+
     <!-- Quarkus extensions -->
     <dependency>
       <groupId>io.quarkus</groupId>
