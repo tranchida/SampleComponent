@@ -1,56 +1,62 @@
 package org.example;
 
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Produces;
+import jakarta.inject.Named;
+import jakarta.transaction.TransactionManager;
+import jakarta.jms.ConnectionFactory;
 import org.apache.activemq.ActiveMQConnectionFactory;
-import org.apache.camel.BindToRegistry;
-import org.apache.camel.Configuration;
-import org.apache.camel.PropertyInject;
+import org.apache.activemq.jms.pool.PooledConnectionFactory;
 import org.apache.camel.component.activemq.ActiveMQComponent;
-import org.springframework.jms.connection.CachingConnectionFactory;
-import org.springframework.jms.connection.JmsTransactionManager;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.jta.JtaTransactionManager;
 
 /**
- * Class to configure the Camel application.
+ * Class to configure the Camel application in Quarkus using CDI.
  */
-@Configuration
+@ApplicationScoped
 public class MyConfiguration {
 
-    @BindToRegistry
-    public MyBean myBean(@PropertyInject("hi") String hi, @PropertyInject("bye") String bye) {
-        // this will create an instance of this bean with the name of the method (eg myBean)
-        return new MyBean(hi, bye);
-    }
-
-    @BindToRegistry
-    public CachingConnectionFactory activeMQConnectionFactory(
-            @PropertyInject("activemq.broker-url") String brokerUrl,
-            @PropertyInject("activemq.username") String username,
-            @PropertyInject("activemq.password") String password) {
-        ActiveMQConnectionFactory factory = new ActiveMQConnectionFactory(brokerUrl);
+    @Produces
+    @Named("activemqConnectionFactory")
+    public ActiveMQConnectionFactory connectionFactory(
+            @ConfigProperty(name = "esb.brokerUrl") String brokerUrl,
+            @ConfigProperty(name = "esb.username") String username,
+            @ConfigProperty(name = "esb.password") String password) {
+        ActiveMQConnectionFactory factory = new ActiveMQConnectionFactory();
+        factory.setBrokerURL(brokerUrl);
         factory.setUserName(username);
         factory.setPassword(password);
-
-        CachingConnectionFactory cachingFactory = new CachingConnectionFactory(factory);
-        cachingFactory.setSessionCacheSize(10);
-        cachingFactory.setReconnectOnException(true);
-        return cachingFactory;
+        return factory;
     }
 
-    @BindToRegistry
-    public JmsTransactionManager transactionManager(CachingConnectionFactory activeMQConnectionFactory) {
-        return new JmsTransactionManager(activeMQConnectionFactory);
+    @Produces
+    @Named("pooledConnectionFactory")
+    public ConnectionFactory pooledConnectionFactory(@Named("activemqConnectionFactory") ActiveMQConnectionFactory cf) {
+        PooledConnectionFactory pooled = new PooledConnectionFactory();
+        pooled.setConnectionFactory(cf);
+        pooled.setMaxConnections(2);
+        return pooled;
     }
 
-    @BindToRegistry("activemq")
+    @Produces
+    public PlatformTransactionManager transactionManager(TransactionManager tm) {
+        return new JtaTransactionManager(tm);
+    }
+
+    @Produces
+    @Named("activemq")
     public ActiveMQComponent activeMQComponent(
-            CachingConnectionFactory activeMQConnectionFactory,
-            JmsTransactionManager transactionManager) {
-        ActiveMQComponent component = new ActiveMQComponent();
-        component.setConnectionFactory(activeMQConnectionFactory);
-        component.setTransactionManager(transactionManager);
-        component.setTransacted(true);
-        component.setCacheLevelName("CACHE_NONE");
-        return component;
+            @Named("pooledConnectionFactory") ConnectionFactory cf,
+            PlatformTransactionManager tm
+    ) {
+        ActiveMQComponent jms = new ActiveMQComponent();
+        jms.setConnectionFactory(cf);
+        jms.setTransactionManager(tm);
+        jms.setTransacted(true);
+        jms.setCacheLevelName("CACHE_NONE"); // important avec JTA
+        return jms;
     }
 
 }
-
