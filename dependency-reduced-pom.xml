@@ -95,7 +95,7 @@
   </dependencyManagement>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <log4j2-version>2.25.3</log4j2-version>
+    <slf4j-version>2.0.17</slf4j-version>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
   </properties>
 </project>

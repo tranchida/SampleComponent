@@ -1,0 +1,7 @@
+<restrict xmlns="http://www.jolokia.org/jolokia-restrictor/schema/config">
+
+  <remote>
+    <host>127.0.0.1</host>
+  </remote>
+
+</restrict>
