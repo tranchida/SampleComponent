@@ -46,6 +46,9 @@ This is a **Camel Quarkus 3.31.4** application (Java 21) using Quarkus ARC (CDI)
 
 **Testing:** `@QuarkusTest` + `camel-quarkus-junit5`. Tests inject `CamelContext` directly and use `FluentProducerTemplate` / `ConsumerTemplate` to drive and assert routes. The test profile activates `application-test.properties` automatically.
 
-**Observability:** Jolokia on port 8778 (`/jolokia/`), MicroProfile Health on `/q/health`, JMX management enabled.
+**Observability:** Monitoring séparé du port applicatif (8080) :
+- **Jolokia** → `http://localhost:8778/jolokia/` (port dédié, serveur HTTP propre de `camel-quarkus-jolokia`)
+- **MicroProfile Health** → `http://localhost:9090/q/health` (`quarkus.management.enabled=true`)
+- JMX management activé via `camel.quarkus.management.enabled=true`
 
 **Infrastructure:** `compose.yaml` runs `apache/activemq-classic:latest` — broker port 61616, web console port 8161.
