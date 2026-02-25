@@ -5,38 +5,47 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Build
-mvn install
+# Start infrastructure (ActiveMQ broker required for JMS routes)
+docker compose up -d
 
-# Run the application (keeps running until ctrl+c)
-mvn camel:run
+# Development mode with live reload
+mvn quarkus:dev
 
-# Run tests
+# Run tests (uses in-VM broker via application-test.properties)
 mvn test
 
 # Run a single test
 mvn test -Dtest=MyApplicationTest
 
-# Build executable fat jar
+# Build (produces target/quarkus-app/)
 mvn package
-# Then run: java -jar target/SampleComponent-1.0-SNAPSHOT-executable-jar.jar
+# Then run: java -jar target/quarkus-app/quarkus-run.jar
+
+# Native build
+mvn package -Pnative
 ```
 
 ## Architecture
 
-This is a **Camel Main** standalone application (Apache Camel 4.18.0, Java 17) that runs without Spring or Quarkus. It uses `camel-main` to bootstrap routing via `Main.run()`.
+This is a **Camel Quarkus 3.31.4** application (Java 21) using Quarkus ARC (CDI) for dependency injection. The `quarkus-maven-plugin` drives build and dev mode.
 
-**Wiring model:** Configuration and bean registration use Camel's built-in DI annotations rather than a framework container:
-- `@Configuration` on a class marks it as a configuration source
-- `@BindToRegistry("name")` on a factory method registers the returned object into the Camel registry under the method name
-- `@PropertyInject("key")` injects values from `application.properties`
-- Route builders (`RouteBuilder` subclasses) are auto-detected from the same package as `MyApplication`
+**Wiring model:** Standard CDI — `@ApplicationScoped` beans, `@Produces` + `@Named` for named bean registration, `@ConfigProperty` (MicroProfile Config) for property injection. `RouteBuilder` subclasses annotated with `@ApplicationScoped` are auto-discovered.
 
-**Route:** A timer fires every `myPeriod` ms → calls `myBean.hello()` → logs → calls `myBean.bye()` → logs.
+**Routes:**
+- `ActiveMQRouteBuilder` — transacted JMS: `activemq:inputtest` → log → `activemq:outputtest`
+- `RestRouteBuilder` — REST via `platform-http`: `GET /api/hello` → JSON `{"Hello": "World!"}`
 
-**Testing:** Tests extend `CamelMainTestSupport` (from `camel-test-main-junit5`) and override `getMainClass()`. Use `NotifyBuilder` to assert on message completion rather than mocking.
+**Configuration:**
+- `src/main/resources/application.properties` — Quarkus app config (HTTP port 8080, health, JMX, config locations)
+- `config/esb.properties` — ActiveMQ broker URL (`esb.brokerUrl`, default `failover:tcp://localhost:61616`)
+- `config/credentials.properties` — `esb.password`
+- `config/environment.properties` — environment-specific overrides
+- `src/main/resources/application-test.properties` — overrides broker URL to `vm://localhost?broker.persistent=false` (embedded broker, no Docker needed for tests)
 
-**Key files:**
-- `src/main/resources/application.properties` — configures camel name, timer period, and bean string values (`hi`, `bye`)
-- `MyConfiguration.java` — factory for `MyBean`, wired via `@BindToRegistry` + `@PropertyInject`
-- `MyRouteBuilder.java` — defines the single route
+**`MyConfiguration.java`** produces three CDI beans: `ActiveMQConnectionFactory`, `PooledConnectionFactory` (max 2 connections), and `ActiveMQComponent` (JTA-transacted, `CACHE_NONE`). The `PlatformTransactionManager` wraps the container's `TransactionManager` via `JtaTransactionManager`.
+
+**Testing:** `@QuarkusTest` + `camel-quarkus-junit5`. Tests inject `CamelContext` directly and use `FluentProducerTemplate` / `ConsumerTemplate` to drive and assert routes. The test profile activates `application-test.properties` automatically.
+
+**Observability:** Jolokia on port 8778 (`/jolokia/`), MicroProfile Health on `/q/health`, JMX management enabled.
+
+**Infrastructure:** `compose.yaml` runs `apache/activemq-classic:latest` — broker port 61616, web console port 8161.
