@@ -40,6 +40,7 @@ public class MyConfiguration {
         PooledConnectionFactory pooled = new PooledConnectionFactory();
         pooled.setConnectionFactory(cf);
         pooled.setMaxConnections(1);
+        pooled.start();
         return pooled;
     }
 
