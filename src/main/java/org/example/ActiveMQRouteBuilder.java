@@ -10,8 +10,10 @@ public class ActiveMQRouteBuilder extends RouteBuilder {
     public void configure() throws Exception {
         from("activemq:inputtest")
                 .transacted()
+                .process("ack")
                 .id("activemq-route")
                 .log("Received message from ActiveMQ: ${body}")
+                .process("myProcessor")
                 .to("activemq:outputtest");
     }
 }

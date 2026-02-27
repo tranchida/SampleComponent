@@ -1,7 +1,10 @@
 package org.example;
 
 import java.util.concurrent.TimeUnit;
+
+import ch.vd.technical.esb.camel.CamelEsbMessageAdapter;
 import jakarta.inject.Inject;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.CamelContext;
 import org.apache.camel.ConsumerTemplate;
 import org.apache.camel.Producer;
@@ -17,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * A simple unit test showing how to test the application in Quarkus.
  */
 @QuarkusTest
+@Slf4j
 class MyApplicationTest {
 
     @Inject
@@ -33,7 +37,7 @@ class MyApplicationTest {
 
 
     @Test
-    void testJmsRoute() {
+    void testJmsRoute() throws Exception {
 
         context.createFluentProducerTemplate()
                 .to("activemq:inputtest")
@@ -43,8 +47,12 @@ class MyApplicationTest {
         var exchange = context.createConsumerTemplate()
                 .receive("activemq:outputtest", 5000);
         Assertions.assertNotNull(exchange);
-        String body = exchange.getIn().getBody(String.class);
-        Assertions.assertEquals("Test Message", body);
+
+        var msg = new CamelEsbMessageAdapter(exchange.getIn());
+
+        Assertions.assertNotNull(msg.getBusinessId());
+        log.info("Received message with BusinessId: {}", msg.getBusinessId());
+        Assertions.assertEquals("<empty/>", msg.getBodyAsString());
 
     }
 }
