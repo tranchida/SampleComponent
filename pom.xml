@@ -73,6 +73,18 @@
       <artifactId>camel-activemq</artifactId>
     </dependency>
 
+    <!-- sftp -->
+    <dependency>
+      <groupId>org.apache.camel</groupId>
+      <artifactId>camel-ftp</artifactId>
+    </dependency>
+
+    <!-- message attachments -->
+    <dependency>
+      <groupId>org.apache.camel</groupId>
+      <artifactId>camel-attachments</artifactId>
+    </dependency>
+
     <!-- jolokia -->
     <dependency>
       <groupId>org.apache.camel</groupId>
